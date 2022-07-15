@@ -368,7 +368,6 @@ void Extension::uninstall(const DeletePluginPref delPref)
 
   // Remove all files inside the extension path
   uninstallFiles(m_path, delPref);
-  ASSERT(!base::is_directory(m_path) || delPref == DeletePluginPref::kNo);
 
   m_isEnabled = false;
   m_isInstalled = false;
@@ -422,7 +421,14 @@ void Extension::uninstallFiles(const std::string& path,
 
   for (const auto& dir : installedDirs) {
     TRACE("EXT: Deleting directory '%s'\n", dir.c_str());
-    base::remove_directory(dir);
+    try {
+      base::remove_directory(dir);
+    }
+    catch (const std::exception& ex) {
+      (void)ex;
+      LOG(ERROR, "RECO: Extension subdirectory cannot be removed, it's not empty.\n"
+                 "      Error: %s\n", ex.what());
+    }
   }
 
   // Delete __info.json file if it does exist (e.g. maybe the
@@ -435,8 +441,16 @@ void Extension::uninstallFiles(const std::string& path,
   }
 
   TRACE("EXT: Deleting extension directory '%s'\n", path.c_str());
-  if (!hasPrefFile)
-    base::remove_directory(path);
+  if (!hasPrefFile) {
+    try {
+      base::remove_directory(path);
+    }
+    catch (const std::exception& ex) {
+      (void)ex;
+      LOG(ERROR, "RECO: Extension directory cannot be removed, it's not empty.\n"
+                 "      Error: %s\n", ex.what());
+    }
+  }
 
 #else // The following code delete the whole "path",
       // we prefer the __info.json approach.
